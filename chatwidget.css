@@ -42,8 +42,8 @@
 }
 
 #uol-chat-bubble img {
-    width: 32px;
-    height: 32px;
+    width: 60px;
+    height: 60px;
     object-fit: contain;
 }
 
@@ -226,8 +226,10 @@
     margin: 0 auto 20px;
 }
 
-.uol-prechat-icon svg {
-    fill: #1a1a1a;
+.uol-prechat-icon img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
 }
 
 #uol-prechat-form h4 {

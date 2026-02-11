@@ -564,7 +564,7 @@
             <div id="uol-chat-widget">
                 <!-- Chat Bubble -->
                 <div id="uol-chat-bubble">
-                    <img src="https://cdn.files-text.com/us-south1/api/lc/img/15924798/199372d81dafe9a93ed480d2b59d0f2c.png" alt="Chat" />
+                    <img src="https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/chat_welcomeIcon-round-small.png" alt="Chat" />
                 </div>
 
                 <!-- Chat Window -->
@@ -613,12 +613,11 @@
                     <div id="uol-prechat-form">
                         <div class="uol-prechat-welcome">
                             <div class="uol-prechat-icon">
-                                <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
-                                </svg>
+                                <img src="https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/chat_welcomeIcon-round.png" alt="Welcome" />
                             </div>
-                            <h4>Welcome!</h4>
-                            <p>Please enter your name to start chatting with us.</p>
+                            <h4 style="font-family: 'Poppins', sans-serif;">Hi! I'm your university chatbot</h4>
+                            <p style="font-family: 'Poppins', sans-serif;">I'm here to help you find information, answer questions, and point out in the right direction</p>
+                            <p style="font-family: 'Poppins', sans-serif;">Please enter your name to get started</p>
                         </div>
                         <div class="uol-prechat-fields">
                             <input type="text" id="uol-prechat-name" placeholder="Your name" required>
