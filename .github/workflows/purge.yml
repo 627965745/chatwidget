@@ -1,0 +1,18 @@
+name: Update CDN Cache
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  refresh-jsdelivr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Purge Requests
+        run: |
+          echo "refreshing CSS..."
+          curl -s https://purge.jsdelivr.net/gh/627965745/chatwidget@main/chatwidget.css
+          echo -e "\nrefreshing JS..."
+          curl -s https://purge.jsdelivr.net/gh/627965745/chatwidget@main/chatwidget.js
+          echo -e "\nrefresh completed!"

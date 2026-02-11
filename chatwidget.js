@@ -94,7 +94,7 @@
     let soundEnabled = true;
     
     // Notification sound
-    const notificationSound = new Audio(baseUrl + 'new_message.ogg');
+    const notificationSound = new Audio("https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/new_message.ogg");
     notificationSound.volume = 0.5;
     
     const playNotificationSound = () => {
@@ -527,7 +527,7 @@
         link.id = 'uol-chat-widget-css';
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = baseUrl + 'chatwidget.css';
+        link.href = "https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/chatwidget.css";
         link.onload = () => {
             applyDynamicStyles();
             callback();
