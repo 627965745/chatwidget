@@ -10,7 +10,7 @@
         organizationId: '80288446-a606-40b6-abfc-bb53c1b05fe1',
         clientId: '9bcefa6049fb31abf99b83e8a5f51c19',
         // baseURL: 'https://test-chatbot-api.liverpool.ac.uk/api/chat/',
-        baseURL: 'https://localhost:7097/api/chat/',
+        baseURL: 'https://test-chatbot-api.liverpool.ac.uk/api/chat/',
         groupId: 0,
         primaryColor: '#212B58',
         title: 'UoL LiveChat',
@@ -46,7 +46,7 @@
 
     // Helper functions
     const noop = () => {};
-    const isAgent = (user) => user && user.id !== state.customerId;
+    const isAgent = (user) => user && (user.type === 'agent' || (user.id !== state.customerId && user.id !== 'system' && user.id !== 'bot'));
 
     // Convert URLs in text to clickable bold hyperlinks
     const linkifyText = (text) => {
@@ -90,21 +90,7 @@
     // DOM Elements (will be set after HTML loads)
     let DOMElements = {};
     
-    // Sound state
-    let soundEnabled = true;
-    
-    // Notification sound
-    const notificationSound = new Audio("https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/new_message.ogg");
-    notificationSound.volume = 0.5;
-    
-    const playNotificationSound = () => {
-        if (soundEnabled) {
-            notificationSound.currentTime = 0;
-            notificationSound.play().catch(err => {
-                console.log('Could not play notification sound:', err.message);
-            });
-        }
-    };
+
 
     // DOM Operations
     const DOMOperations = {
@@ -512,6 +498,19 @@
             const minutes = date.getMinutes();
             // Use 24-hour format like in the reference image (e.g., "15:56")
             return hours + ':' + (minutes < 10 ? '0' : '') + minutes;
+        },
+
+        updateHeaderAgentInfo: (agent) => {
+            if (DOMElements.logo) {
+                if (agent) {
+                    DOMElements.logo.classList.add('online');
+                } else {
+                    DOMElements.logo.classList.remove('online');
+                }
+            }
+            if (DOMElements.headerTitle) {
+                DOMElements.headerTitle.textContent = agent ? (agent.name || 'Agent') : config.title;
+            }
         }
     };
 
@@ -571,19 +570,7 @@
                 <div id="uol-chat-window">
                     <!-- Header -->
                     <div id="uol-chat-header">
-                        <div id="uol-chat-header-left">
-                            <button id="uol-chat-sound-toggle" class="sound-on" title="Toggle sound">
-                                <svg class="sound-on-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                                </svg>
-                                <svg class="sound-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
-                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                    <line x1="23" y1="9" x2="17" y2="15"></line>
-                                    <line x1="17" y1="9" x2="23" y2="15"></line>
-                                </svg>
-                            </button>
-                        </div>
+
                         <div id="uol-chat-header-center">
                             <div id="uol-chat-header-badge">
                                 <div id="uol-chat-header-logo">
@@ -598,12 +585,6 @@
                             <button id="uol-chat-minimize" title="Minimize">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </button>
-                            <button id="uol-chat-close" title="End chat">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
                             </button>
                         </div>
@@ -656,7 +637,7 @@
         DOMElements = {
             bubble: document.getElementById('uol-chat-bubble'),
             window: document.getElementById('uol-chat-window'),
-            soundToggle: document.getElementById('uol-chat-sound-toggle'),
+
             minimizeButton: document.getElementById('uol-chat-minimize'),
             closeButton: document.getElementById('uol-chat-close'),
             preChatForm: document.getElementById('uol-prechat-form'),
@@ -667,7 +648,9 @@
             input: document.getElementById('uol-chat-input'),
             sendButton: document.getElementById('uol-chat-send-btn'),
             startChatArea: document.getElementById('uol-start-chat-area'),
-            startChatBtn: document.getElementById('uol-start-chat-btn')
+            startChatBtn: document.getElementById('uol-start-chat-btn'),
+            logo: document.getElementById('uol-chat-header-logo'),
+            headerTitle: document.querySelector('[data-widget-title]')
         };
         
         callback();
@@ -679,7 +662,7 @@
             callback();
             } else {
             const script = document.createElement('script');
-            script.src = 'https://unpkg.com/@livechat/customer-sdk@^4.0.0/dist/customer-sdk.min.js';
+            script.src = 'https://unpkg.com/@livechat/customer-sdk@^4.0.2/dist/customer-sdk.min.js';
             script.onload = callback;
             script.onerror = () => {
                 console.error('Failed to load LiveChat Customer SDK');
@@ -790,9 +773,15 @@
         sdk.on('user_data', (user) => {
             state.users[user.id] = user;
             
-            // Track current agent
+            // Track current agent - update header based on presence
             if (user.type === 'agent' && state.active) {
-                state.currentAgent = user;
+                if (user.present) {
+                    state.currentAgent = user;
+                    DOMOperations.updateHeaderAgentInfo(user);
+                } else if (state.currentAgent && state.currentAgent.id === user.id) {
+                    state.currentAgent = null;
+                    DOMOperations.updateHeaderAgentInfo(null);
+                }
             }
         });
 
@@ -810,6 +799,7 @@
                 }
                 // Update current agent
                 state.currentAgent = user;
+                DOMOperations.updateHeaderAgentInfo(user);
             }
         });
 
@@ -820,6 +810,8 @@
                 // (transfer message is shown in user_joined_chat)
                 // Clear current agent if this is the current one leaving
                 if (state.currentAgent && state.currentAgent.id === user.id) {
+                    state.currentAgent = null;
+                    DOMOperations.updateHeaderAgentInfo(null);
                     // Don't show "left" message here - transfer message handles it
                     // Just log for debugging
                     console.log('  ↳ Current agent left, waiting for new agent or chat end');
@@ -862,6 +854,7 @@
             console.log('[EVENT] chat_deactivated - Chat ended:', payload);
             state.active = false;
             state.currentAgent = null;  // Reset current agent on chat end
+            DOMOperations.updateHeaderAgentInfo(null);
             
             const chatId = payload.chatId || payload.chat_id;
             
@@ -961,8 +954,7 @@
                 if (chatWindow && !chatWindow.classList.contains('open')) {
                     chatBubble.classList.add('has-notification');
                 }
-                // Play notification sound for agent messages
-                playNotificationSound();
+
             }
         });
 
@@ -1140,6 +1132,18 @@
             const messages = getMessagesFromThreads([chat.thread]);
             messages.forEach((message) => DOMOperations.appendMessage(message));
             DOMOperations.scrollToBottom();
+        }
+
+        // Update header info if an agent is already present in the chat
+        if (chat.users) {
+            const agent = chat.users.find(u => isAgent(u) && u.present);
+            if (agent) {
+                state.currentAgent = agent;
+                DOMOperations.updateHeaderAgentInfo(agent);
+            } else {
+                state.currentAgent = null;
+                DOMOperations.updateHeaderAgentInfo(null);
+            }
         }
     }
 
@@ -1459,25 +1463,18 @@
             }, 50);
         };
 
-        // Sound toggle button
-        if (DOMElements.soundToggle) {
-            DOMElements.soundToggle.onclick = () => {
-                soundEnabled = !soundEnabled;
-                DOMElements.soundToggle.classList.toggle('sound-on', soundEnabled);
-                DOMElements.soundToggle.classList.toggle('sound-off', !soundEnabled);
-                console.log('Sound notification:', soundEnabled ? 'enabled' : 'disabled');
-            };
-        }
+
 
         // Minimize button
         DOMElements.minimizeButton.onclick = () => {
+            handleCloseChat();
             DOMOperations.toggleMinimized();
         };
 
         // Close button - ends the chat
-        DOMElements.closeButton.onclick = () => {
-            handleCloseChat();
-        };
+        // DOMElements.closeButton.onclick = () => {
+        //     handleCloseChat();
+        // };
 
         // Pre-chat form
         DOMElements.preChatSubmit.onclick = handlePreChatForm;
@@ -1566,6 +1563,7 @@
     // Expose to global scope
     window.UoLChatWidget = {
         init: init,
+        closeChat: handleCloseChat,
         getState: () => {
             console.log('Current State:', state);
             return state;

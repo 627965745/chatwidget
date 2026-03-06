@@ -151,8 +151,8 @@
     fill: white;
 }
 
-/* Green online indicator */
-#uol-chat-header-logo::after {
+/* Green online indicator - only shown when agent is online */
+#uol-chat-header-logo.online::after {
     content: '';
     position: absolute;
     bottom: -2px;
@@ -183,22 +183,7 @@
     color: #1a1a1a;
 }
 
-/* Sound Toggle */
-#uol-chat-sound-toggle.sound-off .sound-on-icon {
-    display: none;
-}
 
-#uol-chat-sound-toggle.sound-off .sound-off-icon {
-    display: block !important;
-}
-
-#uol-chat-sound-toggle.sound-on .sound-on-icon {
-    display: block;
-}
-
-#uol-chat-sound-toggle.sound-on .sound-off-icon {
-    display: none !important;
-}
 
 /* ===== Pre-chat Form ===== */
 #uol-prechat-form {
@@ -357,7 +342,7 @@
 }
 
 .uol-message.customer .uol-message-content {
-    background-color: #1a1a1a;
+    background-color: #212B58;
     color: white;
     border-bottom-right-radius: 6px;
 }
