@@ -790,3 +790,125 @@
 .uol-message-link strong {
     font-weight: 700;
 }
+
+/* ===== Rating Modal ===== */
+#uol-chat-rating-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.uol-chat-rating-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 80%;
+    max-width: 300px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.uol-chat-rating-content h4 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #1a1a1a;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.uol-chat-rating-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.uol-chat-rating-buttons button {
+    background: transparent;
+    border: 2px solid #e0e0e0;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.2s ease;
+}
+
+.uol-chat-rating-buttons button:hover {
+    background: #f5f5f5;
+    transform: scale(1.05);
+}
+
+#uol-chat-rate-up.selected {
+    color: #2F80ED;
+    border-color: #2F80ED;
+    background-color: rgba(47, 128, 237, 0.1);
+}
+
+#uol-chat-rate-down.selected {
+    color: #ef4444;
+    border-color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+#uol-chat-rating-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#uol-chat-rating-comment {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    resize: none;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+#uol-chat-rating-comment:focus {
+    outline: none;
+    border-color: #1a1a1a;
+}
+
+.uol-chat-rating-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.uol-chat-rating-actions button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+#uol-chat-rating-cancel {
+    background: #f5f5f5;
+    color: #1a1a1a;
+}
+
+#uol-chat-rating-submit {
+    background: var(--primary-color, #212B58);
+    color: white;
+}
+
+#uol-chat-rating-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}

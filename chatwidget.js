@@ -526,7 +526,7 @@
         link.id = 'uol-chat-widget-css';
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = "https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/chatwidget.css";
+        link.href = baseUrl + "chatwidget.css";
         link.onload = () => {
             applyDynamicStyles();
             callback();
@@ -570,7 +570,18 @@
                 <div id="uol-chat-window">
                     <!-- Header -->
                     <div id="uol-chat-header">
-
+                        <div id="uol-chat-header-left">
+                            <button id="uol-chat-rate" title="Rate Chat" style="display: none;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <g transform="translate(0,0) scale(0.65)" stroke-width="3">
+                                        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                    </g>
+                                    <g transform="translate(9,9) scale(0.65)" stroke-width="3">
+                                        <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2"></path>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
                         <div id="uol-chat-header-center">
                             <div id="uol-chat-header-badge">
                                 <div id="uol-chat-header-logo">
@@ -625,6 +636,28 @@
                     <div id="uol-start-chat-area" style="display: none;">
                         <button id="uol-start-chat-btn">Resume chat</button>
                     </div>
+
+                    <!-- Rating Modal -->
+                    <div id="uol-chat-rating-modal" style="display: none;">
+                        <div class="uol-chat-rating-content">
+                            <h4>Please tell us how to think of this chat</h4>
+                            <div class="uol-chat-rating-buttons">
+                                <button id="uol-chat-rate-up" title="Thumb up">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                                </button>
+                                <button id="uol-chat-rate-down" title="Thumb down">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2"></path></svg>
+                                </button>
+                            </div>
+                            <div id="uol-chat-rating-details" style="display: none;">
+                                <textarea id="uol-chat-rating-comment" placeholder="Tell us more (optional)" rows="3"></textarea>
+                                <div class="uol-chat-rating-actions">
+                                    <button id="uol-chat-rating-cancel">Cancel</button>
+                                    <button id="uol-chat-rating-submit">Submit rating</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -650,7 +683,15 @@
             startChatArea: document.getElementById('uol-start-chat-area'),
             startChatBtn: document.getElementById('uol-start-chat-btn'),
             logo: document.getElementById('uol-chat-header-logo'),
-            headerTitle: document.querySelector('[data-widget-title]')
+            headerTitle: document.querySelector('[data-widget-title]'),
+            rateButton: document.getElementById('uol-chat-rate'),
+            ratingModal: document.getElementById('uol-chat-rating-modal'),
+            rateUpBtn: document.getElementById('uol-chat-rate-up'),
+            rateDownBtn: document.getElementById('uol-chat-rate-down'),
+            ratingDetails: document.getElementById('uol-chat-rating-details'),
+            ratingComment: document.getElementById('uol-chat-rating-comment'),
+            ratingCancelBtn: document.getElementById('uol-chat-rating-cancel'),
+            ratingSubmitBtn: document.getElementById('uol-chat-rating-submit')
         };
         
         callback();
@@ -797,9 +838,15 @@
                 } else if (!state.currentAgent) {
                     DOMOperations.addSystemMessage(`${user.name || 'Agent'} joined the chat`);
                 }
-                // Update current agent
-                state.currentAgent = user;
-                DOMOperations.updateHeaderAgentInfo(user);
+                // Update current agent - only if present
+                if (user.present) {
+                    state.currentAgent = user;
+                    DOMOperations.updateHeaderAgentInfo(user);
+                } else {
+                    // If not present, ensure we don't accidentally show them
+                    state.currentAgent = null;
+                    DOMOperations.updateHeaderAgentInfo(null);
+                }
             }
         });
 
@@ -856,6 +903,10 @@
             state.currentAgent = null;  // Reset current agent on chat end
             DOMOperations.updateHeaderAgentInfo(null);
             
+            if (DOMElements.rateButton) {
+                DOMElements.rateButton.style.display = 'none';
+            }
+
             const chatId = payload.chatId || payload.chat_id;
             
             // If user intentionally closed the chat, don't show additional messages
@@ -911,10 +962,19 @@
                 console.log(`  ↳ System message: ${event.systemMessageType}`);
                 
                 // Exclude certain system message types from display
-                const excludedSystemMessages = ['manual_archived_customer'];
+                const excludedSystemMessages = ['manual_archived_customer','manual_archived_agent'];
                 if (excludedSystemMessages.includes(event.systemMessageType)) {
                     console.log(`  ↳ System message excluded from display: ${event.systemMessageType}`);
                     return;
+                }
+                
+                // Special handling for chat transfer events to update header
+                if (event.systemMessageType === 'chat_transferred' && event.textVars && event.textVars.targets) {
+                    const targetName = event.textVars.targets;
+                    console.log(`  ↳ Chat transferred to: ${targetName}`);
+                    
+                    // Update header title and show online dot
+                    DOMOperations.updateHeaderAgentInfo({ name: targetName });
                 }
                 
                 if (event.text) {
@@ -1069,6 +1129,22 @@
             
             console.log('Existing chat loaded - chat_id:', state.chat, 'thread_id:', state.thread);
 
+            // Update header info if an agent is already present in the existing chat
+            if (existingChat.users) {
+                const agent = existingChat.users.find(u => isAgent(u) && u.present);
+                if (agent) {
+                    state.currentAgent = agent;
+                    DOMOperations.updateHeaderAgentInfo(agent);
+                } else {
+                    state.currentAgent = null;
+                    DOMOperations.updateHeaderAgentInfo(null);
+                }
+            }
+
+            if (state.active && DOMElements.rateButton) {
+                DOMElements.rateButton.style.display = 'flex';
+            }
+
             loadInitialHistory().then(() => {
                 console.log('History loaded, chat active:', state.active);
                 DOMOperations.showChat();
@@ -1107,6 +1183,10 @@
         DOMOperations.enableInput();
         DOMOperations.enableSendButton();
         
+        if (DOMElements.rateButton) {
+            DOMElements.rateButton.style.display = 'flex';
+        }
+
         // If resuming an existing chat, load full history
         if (wasResumingChat) {
             console.log('Resuming chat - loading full history');
@@ -1452,6 +1532,9 @@
         }
     }
 
+    // Rating State
+    let currentRating = null;
+
     // Event handlers setup
     function setupEventHandlers() {
         // Chat bubble click
@@ -1467,7 +1550,6 @@
 
         // Minimize button
         DOMElements.minimizeButton.onclick = () => {
-            handleCloseChat();
             DOMOperations.toggleMinimized();
         };
 
@@ -1478,6 +1560,84 @@
 
         // Pre-chat form
         DOMElements.preChatSubmit.onclick = handlePreChatForm;
+
+        // Rating handlers
+        if (DOMElements.rateButton) {
+            DOMElements.rateButton.onclick = (e) => {
+                e.stopPropagation();
+                if (DOMElements.ratingModal) {
+                    DOMElements.ratingModal.style.display = 'flex';
+                    currentRating = null;
+                    if (DOMElements.rateUpBtn) DOMElements.rateUpBtn.classList.remove('selected');
+                    if (DOMElements.rateDownBtn) DOMElements.rateDownBtn.classList.remove('selected');
+                    if (DOMElements.ratingDetails) DOMElements.ratingDetails.style.display = 'none';
+                    if (DOMElements.ratingComment) DOMElements.ratingComment.value = '';
+                }
+            };
+        }
+
+        if (DOMElements.ratingModal) {
+            DOMElements.ratingModal.onclick = (e) => {
+                if (e.target === DOMElements.ratingModal) {
+                    DOMElements.ratingModal.style.display = 'none';
+                }
+            };
+        }
+
+        if (DOMElements.rateUpBtn) {
+            DOMElements.rateUpBtn.onclick = () => {
+                currentRating = 1;
+                DOMElements.rateUpBtn.classList.add('selected');
+                if (DOMElements.rateDownBtn) DOMElements.rateDownBtn.classList.remove('selected');
+                if (DOMElements.ratingDetails) DOMElements.ratingDetails.style.display = 'block';
+            };
+        }
+
+        if (DOMElements.rateDownBtn) {
+            DOMElements.rateDownBtn.onclick = () => {
+                currentRating = 0;
+                DOMElements.rateDownBtn.classList.add('selected');
+                if (DOMElements.rateUpBtn) DOMElements.rateUpBtn.classList.remove('selected');
+                if (DOMElements.ratingDetails) DOMElements.ratingDetails.style.display = 'block';
+            };
+        }
+
+        if (DOMElements.ratingCancelBtn) {
+            DOMElements.ratingCancelBtn.onclick = () => {
+                if (DOMElements.ratingModal) DOMElements.ratingModal.style.display = 'none';
+            };
+        }
+
+        if (DOMElements.ratingSubmitBtn) {
+            DOMElements.ratingSubmitBtn.onclick = () => {
+                if (currentRating !== null && state.chat) {
+                    const commentText = DOMElements.ratingComment ? DOMElements.ratingComment.value.trim() : '';
+
+                    const ratingData = { score: currentRating };
+                    if (commentText) {
+                        ratingData.comment = commentText;
+                    }
+
+                    DOMElements.ratingSubmitBtn.disabled = true;
+                    DOMElements.ratingSubmitBtn.textContent = 'Submitting...';
+
+                    sdk.rateChat({
+                        chatId: state.chat,
+                        rating: ratingData
+                    }).then(() => {
+                        console.log('Rating has been set');
+                        if (DOMElements.ratingModal) DOMElements.ratingModal.style.display = 'none';
+                        DOMOperations.addSystemMessage('Thank you for rating this chat!');
+                    }).catch(error => {
+                        console.error('Rating failed:', error);
+                        console.log('Error details:', error);
+                    }).finally(() => {
+                        DOMElements.ratingSubmitBtn.disabled = false;
+                        DOMElements.ratingSubmitBtn.textContent = 'Submit rating';
+                    });
+                }
+            };
+        }
 
         // Start chat button (after chat ended)
         if (DOMElements.startChatBtn) {
@@ -1563,7 +1723,6 @@
     // Expose to global scope
     window.UoLChatWidget = {
         init: init,
-        closeChat: handleCloseChat,
         getState: () => {
             console.log('Current State:', state);
             return state;
