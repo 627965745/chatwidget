@@ -48,12 +48,11 @@
     const noop = () => {};
     const isAgent = (user) => user && (user.type === 'agent' || (user.id !== state.customerId && user.id !== 'system' && user.id !== 'bot'));
 
-    // Convert URLs in text to clickable bold hyperlinks
-    const linkifyText = (text) => {
-        // URL regex pattern to match http, https, www URLs, mailto:, and tel: links
-        const urlPattern = /(https?:\/\/[^\s<]+|www\.[^\s<]+|mailto:[^\s<]+|tel:[^\s<]+)/gi;
+    // Format message text: escape HTML, linkify URLs, and handle lists/paragraphs
+    const formatMessageText = (text) => {
+        if (!text) return '';
         
-        // First escape HTML to prevent XSS
+        // 1. First escape HTML to prevent XSS
         const escapeHtml = (str) => {
             const div = document.createElement('div');
             div.textContent = str;
@@ -62,8 +61,9 @@
         
         const escapedText = escapeHtml(text);
         
-        // Replace URLs with anchor tags
-        return escapedText.replace(urlPattern, (url) => {
+        // 2. Handle URL linkification
+        const urlPattern = /(https?:\/\/[^\s<]+|www\.[^\s<]+|mailto:[^\s<]+|tel:[^\s<]+)/gi;
+        let processedText = escapedText.replace(urlPattern, (url) => {
             let href = url;
             let displayText = url;
             
@@ -85,6 +85,56 @@
             
             return `<a href="${href}"${targetAttr} class="uol-message-link"><strong>${displayText}</strong></a>`;
         });
+
+        // 3. Handle Lists and Paragraphs
+        const lines = processedText.split(/\n/);
+        let finalHtml = '';
+        let listType = null; // 'ul' or 'ol'
+
+        const closeList = () => {
+            if (listType) {
+                finalHtml += `</${listType}>`;
+                listType = null;
+            }
+        };
+
+        lines.forEach(line => {
+            const trimmedLine = line.trim();
+            
+            // Check for ordered list: "1. ", "2. ", "1) ", etc.
+            const olMatch = trimmedLine.match(/^(\d+)[.)]\s+(.+)/);
+            // Check for unordered list: "* ", "- ", "• "
+            const ulMatch = trimmedLine.match(/^[*•-]\s+(.+)/);
+
+            if (olMatch) {
+                if (listType !== 'ol') {
+                    closeList();
+                    finalHtml += '<ol class="uol-message-list">';
+                    listType = 'ol';
+                }
+                // Use the captured number to preserve original numbering (fixes "all starting at 1" issue)
+                finalHtml += `<li value="${olMatch[1]}">${olMatch[2]}</li>`;
+            } else if (ulMatch) {
+                if (listType !== 'ul') {
+                    closeList();
+                    finalHtml += '<ul class="uol-message-list">';
+                    listType = 'ul';
+                }
+                finalHtml += `<li>${ulMatch[1]}</li>`;
+            } else if (trimmedLine === '') {
+                // If we are in a list, don't close it yet - keep it open in case the next line is more items
+                // This allows for empty lines between list items without breaking the numbering
+                if (!listType) {
+                    finalHtml += '<div class="uol-message-spacer"></div>';
+                }
+            } else {
+                closeList();
+                finalHtml += `<div class="uol-message-paragraph">${line}</div>`;
+            }
+        });
+
+        closeList();
+        return finalHtml;
     };
 
     // DOM Elements (will be set after HTML loads)
@@ -328,12 +378,8 @@
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'uol-message-content';
-            // Use linkifyText for agent messages to make URLs clickable and bold
-            if (type === 'agent') {
-                contentDiv.innerHTML = linkifyText(text);
-            } else {
-                contentDiv.textContent = text;
-            }
+            // Use formatMessageText to handle links, lists, and paragraphs
+            contentDiv.innerHTML = formatMessageText(text);
 
             wrapperDiv.appendChild(contentDiv);
             messageDiv.appendChild(wrapperDiv);
@@ -572,11 +618,11 @@
                     <div id="uol-chat-header">
                         <div id="uol-chat-header-left">
                             <button id="uol-chat-rate" title="Rate Chat" style="display: none;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                    <g transform="translate(0,0) scale(0.65)" stroke-width="3">
+                                <svg width="26" height="15" viewBox="0 0 45 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5">
+                                    <g transform="translate(0, 1) scale(0.9)">
                                         <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
                                     </g>
-                                    <g transform="translate(9,9) scale(0.65)" stroke-width="3">
+                                    <g transform="translate(22, 1) scale(0.9)">
                                         <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2"></path>
                                     </g>
                                 </svg>
@@ -608,7 +654,7 @@
                                 <img src="https://cdn.jsdelivr.net/gh/627965745/chatwidget@main/chat_welcomeIcon-round.png" alt="Welcome" />
                             </div>
                             <h4 style="font-family: 'Poppins', sans-serif;">Hi! I'm your university chatbot</h4>
-                            <p style="font-family: 'Poppins', sans-serif;">I'm here to help you find information, answer questions, and point out in the right direction</p>
+                            <p style="font-family: 'Poppins', sans-serif;">I'm here to help you find information, answer questions, and point you in the right direction</p>
                             <p style="font-family: 'Poppins', sans-serif;">Please enter your name to get started</p>
                         </div>
                         <div class="uol-prechat-fields">
@@ -640,13 +686,13 @@
                     <!-- Rating Modal -->
                     <div id="uol-chat-rating-modal" style="display: none;">
                         <div class="uol-chat-rating-content">
-                            <h4>Please tell us how to think of this chat</h4>
+                            <h4>How would you rate this chat?</h4>
                             <div class="uol-chat-rating-buttons">
                                 <button id="uol-chat-rate-up" title="Thumb up">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                                    <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
                                 </button>
                                 <button id="uol-chat-rate-down" title="Thumb down">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2"></path></svg>
+                                    <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="2" fill="none"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2"></path></svg>
                                 </button>
                             </div>
                             <div id="uol-chat-rating-details" style="display: none;">
@@ -962,7 +1008,7 @@
                 console.log(`  ↳ System message: ${event.systemMessageType}`);
                 
                 // Exclude certain system message types from display
-                const excludedSystemMessages = ['manual_archived_customer','manual_archived_agent'];
+                const excludedSystemMessages = ['manual_archived_customer','manual_archived_agent','rating.chat_rated'];
                 if (excludedSystemMessages.includes(event.systemMessageType)) {
                     console.log(`  ↳ System message excluded from display: ${event.systemMessageType}`);
                     return;
@@ -1627,7 +1673,17 @@
                     }).then(() => {
                         console.log('Rating has been set');
                         if (DOMElements.ratingModal) DOMElements.ratingModal.style.display = 'none';
-                        DOMOperations.addSystemMessage('Thank you for rating this chat!');
+                        const agentInfo = state.currentAgent || { name: config.title };
+                        const msgObj = DOMOperations.createMessage(
+                            'rating-thanks-' + Date.now(),
+                            'Thank you for rating this chat!',
+                            'agent',
+                            agentInfo,
+                            new Date()
+                        );
+                        msgObj.classList.add('rating-thanks');
+                        DOMOperations.appendMessage(msgObj);
+                        DOMOperations.scrollToBottom();
                     }).catch(error => {
                         console.error('Rating failed:', error);
                         console.log('Error details:', error);
